@@ -43,6 +43,7 @@ jobs:
             -pass env:STRUCTURE_BUILD_KEY
           tar -xzf .structure_build/source.tar.gz -C .structure_build
           test -s .structure_build/src/soil_structure_cuda.cu
+          test -s .structure_build/src/soil_segmentation_cuda.cu
           test -s .structure_build/src/trial_guard.cpp
 
       - name: Configure Windows native CUDA build
@@ -55,12 +56,27 @@ jobs:
           cmake --build build-structure --config Release --target structure_test --parallel
           & .\build-structure\Release\structure_test.exe
 
+      - name: Validate supervised four-class segmentation
+        shell: pwsh
+        run: |
+          cmake --build build-structure --config Release --target segmentation_test --parallel
+          & .\build-structure\Release\segmentation_test.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Segmentation unit tests failed.' }
+
       - name: Compile Windows CUDA executable
         shell: pwsh
         run: |
           cmake --build build-structure --config Release --target SoilStructureCUDA --parallel
           if (!(Test-Path build-structure\Release\SoilStructureCUDA.exe)) {
             throw 'Native CUDA EXE was not produced.'
+          }
+
+      - name: Compile four-class CUDA segmentation executable
+        shell: pwsh
+        run: |
+          cmake --build build-structure --config Release --target SoilSegmentationCUDA --parallel
+          if (!(Test-Path build-structure\Release\SoilSegmentationCUDA.exe)) {
+            throw 'Native CUDA segmentation EXE was not produced.'
           }
 
       - name: Package only executable and user configuration
@@ -70,10 +86,21 @@ jobs:
           Copy-Item build-structure\Release\SoilStructureCUDA.exe dist\
           Copy-Item release\config_structure.txt dist\
           Copy-Item release\run_structure.bat dist\
+          New-Item -ItemType Directory -Force dist-segmentation | Out-Null
+          Copy-Item build-structure\Release\SoilSegmentationCUDA.exe dist-segmentation\
+          Copy-Item Image_Segmentation\config_segmentation.txt dist-segmentation\
+          Copy-Item Image_Segmentation\run_segmentation.bat dist-segmentation\
 
       - name: Upload EXE-only artifact
         uses: actions/upload-artifact@v4
         with:
           name: SoilStructure3D-NativeCUDA
           path: dist/*
+          if-no-files-found: error
+
+      - name: Upload four-class segmentation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SoilSegmentation3D-NativeCUDA
+          path: dist-segmentation/*
           if-no-files-found: error

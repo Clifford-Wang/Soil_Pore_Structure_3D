@@ -1,0 +1,33 @@
+# Four-phase supervised 3D CT segmentation: native Windows CUDA inference
+# Label encoding: 0=unlabeled, 1=air, 2=water, 3=mineral, 4=organic, 255=ignore
+# All source and annotation stacks MUST have identical x/y/z dimensions.
+nx = 200
+ny = 200
+nz = 200
+
+# 1 = train a Random Forest from manually labeled data, then predict.
+# 0 = load the saved model for subsequent samples without retraining.
+train_model = 1
+training_image = training/grayscale_u16.raw
+training_labels = training/annotations_u8.raw
+model_path = segmentation.rf
+prediction_image = input/grayscale_u16.raw
+validation_labels =
+output_folder = output_segmentation
+
+# 0 = little-endian uint16 raw; 1 = uint8 raw.
+# Alternatively set image path to a .tif file or directory of ordered TIFF slices.
+# TIFF slice filenames should be zero-padded (slice_0001.tif etc.).
+raw_grayscale_u8 = 0
+gpu_id = 0
+trees = 32
+max_depth = 12
+min_leaf = 12
+samples_per_class = 3000
+seed = 20261121
+
+# Export optional full four-class vote scores (four float32 values per voxel).
+export_probabilities = 0
+uncertainty_threshold = 0.60
+# 0=air/water (pore), 1=mineral/organic (solid), compatible with structure module.
+export_structure_txt = 1
