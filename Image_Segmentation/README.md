@@ -1,5 +1,12 @@
 # 3D CT phase segmentation (native CUDA)
 
+Windows x64 native CUDA build completed on 2026-11-21. Host-side tests passed; physical GPU operation and real-soil segmentation accuracy remain unverified.
+
+- [Download SoilSegmentationCUDA.exe](SoilSegmentationCUDA.exe)
+- [Download configurable parameters](config_segmentation.txt)
+- [Download Windows launcher](run_segmentation.bat)
+- [Successful Windows build record](https://github.com/Clifford-Wang/Soil_Pore_Structure_3D/actions/runs/44905298000)
+
 ## Scope and method
 
 The executable implements supervised, four-class Random Forest voxel classification.

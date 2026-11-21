@@ -26,6 +26,6 @@ Windows 原生 CUDA 程序要求兼容的 NVIDIA 显卡及驱动。程序内置�
 
 ## Image Segmentation | 三维 CT 四相分割
 
-[Image_Segmentation 独立模块](Image_Segmentation/README.md)提供监督式 Random Forest 分类：依据用户标注训练空气、水、矿物及有机质四类体素，利用原生 CUDA 执行三维预测，输出标签、置信度、VTK 和相体积分数。支持 RAW 与 TIFF 图像输入。原始灰度图不能在缺少参考标注时被视为四相物理真值；实际土样识别精度须独立验证。
+[Image_Segmentation 独立模块](Image_Segmentation/README.md)（[下载 CUDA EXE](Image_Segmentation/SoilSegmentationCUDA.exe)）提供监督式 Random Forest 分类：依据用户标注训练空气、水、矿物及有机质四类体素，利用原生 CUDA 执行三维预测，输出标签、置信度、VTK 和相体积分数。支持 RAW 与 TIFF 图像输入。原始灰度图不能在缺少参考标注时被视为四相物理真值；实际土样识别精度须独立验证。
 
 Windows 原生 CUDA 分割程序与上述结构分析程序分别发布，均采用首次运行起 72 小时的试用校验。
