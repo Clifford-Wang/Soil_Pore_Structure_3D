@@ -1,0 +1,74 @@
+name: Build Soil Structure Native CUDA
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-cuda:
+    runs-on: windows-2022
+    timeout-minutes: 120
+    steps:
+      - name: Checkout binary-release repository
+        uses: actions/checkout@v4
+
+      - name: Install CUDA Toolkit
+        uses: Jimver/cuda-toolkit@v0.2.36
+        with:
+          cuda: '12.8.1'
+          method: 'network'
+          sub-packages: '["nvcc", "cudart", "visual_studio_integration"]'
+          use-github-cache: true
+
+      - name: Decrypt private native build input
+        shell: bash
+        env:
+          STRUCTURE_BUILD_KEY: ${{ secrets.STRUCTURE_BUILD_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "${STRUCTURE_BUILD_KEY:-}"
+          mkdir -p .structure_build
+          if command -v openssl >/dev/null 2>&1; then OPENSSL=openssl;
+          else OPENSSL="/c/Program Files/Git/usr/bin/openssl.exe"; fi
+          "$OPENSSL" enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
+            -in .private/structure/source.enc \
+            -out .structure_build/source.tar.gz \
+            -pass env:STRUCTURE_BUILD_KEY
+          tar -xzf .structure_build/source.tar.gz -C .structure_build
+          test -s .structure_build/src/soil_structure_cuda.cu
+          test -s .structure_build/src/trial_guard.cpp
+
+      - name: Configure Windows native CUDA build
+        shell: pwsh
+        run: cmake -S .structure_build -B build-structure -A x64
+
+      - name: Validate host-side topology and geometry
+        shell: pwsh
+        run: |
+          cmake --build build-structure --config Release --target structure_test --parallel
+          & .\build-structure\Release\structure_test.exe
+
+      - name: Compile Windows CUDA executable
+        shell: pwsh
+        run: |
+          cmake --build build-structure --config Release --target SoilStructureCUDA --parallel
+          if (!(Test-Path build-structure\Release\SoilStructureCUDA.exe)) {
+            throw 'Native CUDA EXE was not produced.'
+          }
+
+      - name: Package only executable and user configuration
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item build-structure\Release\SoilStructureCUDA.exe dist\
+          Copy-Item release\config_structure.txt dist\
+          Copy-Item release\run_structure.bat dist\
+
+      - name: Upload EXE-only artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SoilStructure3D-NativeCUDA
+          path: dist/*
+          if-no-files-found: error

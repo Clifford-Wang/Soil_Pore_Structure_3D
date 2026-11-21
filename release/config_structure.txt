@@ -1,0 +1,24 @@
+# Soil Structure 3D - native CUDA configuration
+# Input segmentation TXT: 0=pore, 1/255=solid; values in F order by default.
+input_folder = input
+output_folder = output
+nx = 200
+ny = 200
+nz = 200
+voxel_um = 25.0
+input_order = F
+pore_value = 0
+
+# 6: face-sharing connectivity (recommended for transport).
+# 18/26: morphological adjacency only, not interchangeable with 6.
+connectivity = 6
+# Z_THROUGH, Z_ANY, X_THROUGH, Y_THROUGH, LARGEST, ALL_BOUNDARY, CLOSED
+mask_mode = Z_THROUGH
+
+# Computation switches
+export_masks = true
+compute_edt = true
+compute_tortuosity = true
+compute_euler = true
+compute_critical_diameter = true
+histogram_bins = 40
