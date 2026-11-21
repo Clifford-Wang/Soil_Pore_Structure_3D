@@ -2,6 +2,11 @@ name: Build Soil Structure Native CUDA
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-structure.yml'
+      - '.private/structure/source.enc'
 
 permissions:
   contents: read
