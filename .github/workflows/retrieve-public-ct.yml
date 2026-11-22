@@ -61,22 +61,22 @@ jobs:
               sr = t_raw.series[0].shape
               ss = t_seg.series[0].shape
               print('Raw shape', sr, 'segmented shape', ss, flush=True)
-              if len(sr)!=3 or len(ss)!=3 or sr!=ss:
-                  raise RuntimeError(f'Paired volumes are not matching 3D arrays: {sr} {ss}')
-              z,y,x = sr
-              dz,dy,dx = min(64,z),min(192,y),min(192,x)
-              z0,y0,x0 = (z-dz)//2,(y-dy)//2,(x-dx)//2
-              def subvolume(t):
+              if len(sr)!=3 or len(ss)!=3 or sr[0]!=ss[0] or sr[1]<ss[1] or sr[2]<ss[2]:
+                  raise RuntimeError(f'Volumes cannot be paired by translation: {sr} {ss}')
+              dz,dy,dx = min(64,ss[0]),min(192,ss[1]),min(192,ss[2])
+              z0,y0,x0 = (ss[0]-dz)//2,(ss[1]-dy)//2,(ss[2]-dx)//2
+              ymax,xmax = sr[1]-ss[1],sr[2]-ss[2]
+              def crop(t,ny,nx):
                   if len(t.pages)>=z0+dz:
-                      return np.stack([t.pages[k].asarray()[y0:y0+dy,x0:x0+dx] for k in range(z0,z0+dz)])
-                  vol = t.asarray()
-                  return np.asarray(vol[z0:z0+dz,y0:y0+dy,x0:x0+dx])
-              raw = subvolume(t_raw)
-              lab = subvolume(t_seg)
+                      return np.stack([t.pages[k].asarray()[y0:y0+ny,x0:x0+nx] for k in range(z0,z0+dz)])
+                  volume=t.asarray()
+                  return np.asarray(volume[z0:z0+dz,y0:y0+ny,x0:x0+nx])
+              raw = crop(t_raw,dy+ymax,dx+xmax)
+              lab = crop(t_seg,dy,dx)
           unique,counts = np.unique(lab,return_counts=True)
           print('Labels/counts:',list(zip(unique.tolist(),counts.tolist()))[:30], flush=True)
-          np.savez_compressed(output/'tuhh_ct_02_paired_crop.npz', gray=raw, labels=lab)
-          metadata={'dataset':'DOI:10.15480/336.4291','files':targets,'original_shape':sr,'crop_offset_zyx':[z0,y0,x0],'shape':list(raw.shape),'raw_dtype':str(raw.dtype),'label_dtype':str(lab.dtype),'labels_and_counts':list(zip(unique.tolist(),counts.tolist()))[:30]}
+          np.savez_compressed(output/'tuhh_ct_02_paired_crop.npz', gray_search=raw, labels=lab)
+          metadata={'dataset':'DOI:10.15480/336.4291','files':targets,'original_shape':sr,'segmented_shape':ss,'segmented_crop_offset_zyx':[z0,y0,x0],'offset_search_yx':[ymax,xmax],'raw_search_shape':list(raw.shape),'label_shape':list(lab.shape),'raw_dtype':str(raw.dtype),'label_dtype':str(lab.dtype),'labels_and_counts':list(zip(unique.tolist(),counts.tolist()))[:30]}
           (output/'metadata.json').write_text(json.dumps(metadata,indent=2),encoding='utf-8')
           print('Created paired crop:',metadata,flush=True)
           PY
