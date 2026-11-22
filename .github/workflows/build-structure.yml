@@ -56,6 +56,13 @@ jobs:
           cmake --build build-structure --config Release --target structure_test --parallel
           & .\build-structure\Release\structure_test.exe
 
+      - name: Validate supervised three-phase segmentation
+        shell: pwsh
+        run: |
+          cmake --build build-structure --config Release --target segmentation_three_phase_test --parallel
+          & .\build-structure\Release\segmentation_three_phase_test.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Three-phase segmentation tests failed.' }
+
       - name: Validate supervised four-class segmentation
         shell: pwsh
         run: |
@@ -71,7 +78,7 @@ jobs:
             throw 'Native CUDA EXE was not produced.'
           }
 
-      - name: Compile four-class CUDA segmentation executable
+      - name: Compile CUDA three-/four-phase segmentation executable
         shell: pwsh
         run: |
           cmake --build build-structure --config Release --target SoilSegmentationCUDA --parallel
@@ -98,7 +105,7 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
-      - name: Upload four-class segmentation artifact
+      - name: Upload three-/four-phase segmentation artifact
         uses: actions/upload-artifact@v4
         with:
           name: SoilSegmentation3D-NativeCUDA

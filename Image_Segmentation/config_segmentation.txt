@@ -37,6 +37,19 @@ phase_weight_water = 1.0
 phase_weight_mineral = 1.0
 phase_weight_organic = 1.0
 
+
+# Optional 3D local air-coherence refinement (three-phase models only).
+# Disabled by default to avoid applying CT02-specific calibration to other scans.
+# TUHH CT02 calibrated profile: phase_weight_air=0.125, phase_weight_water=0.700,
+# phase_weight_mineral=1.0, air_spatial_filter=1, radius=2, min_fraction=0.4.
+# The seed weights differ intentionally from the final prediction weights.
+# On a new soil sample, recalibrate with separate annotated slices first.
+air_spatial_filter = 0
+air_support_radius = 2
+air_support_min_fraction = 0.4
+air_seed_weight_air = 0.075
+air_seed_weight_water = 0.850
+
 # Export optional weighted, renormalized four-class vote scores (four float32 values per voxel).
 export_probabilities = 0
 uncertainty_threshold = 0.60
