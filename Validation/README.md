@@ -48,21 +48,3 @@ The final calibration used class weights **air 0.125, water 0.700 and solid 1.00
 The spatial filter improved the air-class overlap while maintaining the high water and solid scores within this CT acquisition. However, the air Dice remains below 0.60; transfer to other soil materials, imaging conditions or moisture regimes has not been demonstrated.
 
 The published test metrics were obtained by comparing CPU-equivalent inference and refinement calculations against the independent reference labels. [Windows CUDA compilation and host-side tests passed](https://github.com/Clifford-Wang/Soil_Pore_Structure_3D/actions/runs/45015743525), but execution on a physical NVIDIA GPU and the complete 72-hour trial-expiry process remain to be verified on user hardware.
-
-## 3. Pore-network model: synthetic reference checks
-
-The new Pore Network Model module provides independent input routes for the original PoreSpy SNOW2 and Imperial College pnextract networks. Its common physics solver was checked using prescribed small networks before applying it to real segmented samples.
-
-| Verification case | Test criterion | Host test |
-|:--|:--|:--|
-| Straight circular tube | The calculated volumetric flow matches the Hagen–Poiseuille solution with a known length, radius, viscosity and pressure difference | Passed |
-| Three-pore serial network | The intermediate pressure is halfway between two fixed boundary pressures and inlet/outlet fluxes agree | Passed |
-| Blocked throat | Flow vanishes when a serial network loses an inlet-to-outlet path | Passed |
-| Water-wet top-entry drainage | Water saturation decreases monotonically with increasing imposed capillary pressure | Passed |
-| Relative permeability endpoints | The fully water-filled network gives initial water relative permeability 1 and gas relative permeability 0; after complete invasion the reverse holds | Passed |
-| Import and basic solute transport | Statoil-format and standardized CSV pore networks are read consistently and a water-phase solute breakthrough file is generated | Passed |
-
-The hydraulic conductance is presently derived from an idealized cylindrical throat model, and the displacement calculation is quasi-static. Wetting films, trapping, snap-off, hysteretic imbibition and dynamic inertial or viscous two-phase displacement are outside this implementation. The native CUDA kernel calculates throat entry pressures; graph traversal, linear flow and solute transport calculations currently run on the host. GPU compilation and on-device execution are separately tracked in the [build workflow](https://github.com/Clifford-Wang/Soil_Pore_Structure_3D/actions/workflows/build-pnm.yml).
-
-These analytical and synthetic checks do not establish equivalence between the SNOW2 and maximal-ball network extractions, nor do they establish agreement with a micro-CT experiment. Validation on matching binary soil images, independent pressure–saturation measurements and permeability measurements is required.
-
