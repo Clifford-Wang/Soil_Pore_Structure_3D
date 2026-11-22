@@ -24,10 +24,14 @@ Windows 原生 CUDA 程序要求兼容的 NVIDIA 显卡及驱动。程序内置�
 
 数值核查包括形态学、连通域、孔–固界面和欧氏距离变换等标准合成样品。复杂自然土壤输入仍建议检查分割精度、体素分辨率及代表性体积。
 
-## Image Segmentation | 三维 CT 三相 / 四相分割
+## Image Segmentation | 三维 CT 空气–水–固体分割
 
-[Image_Segmentation 独立模块](Image_Segmentation/README.md)（[下载 CUDA EXE](Image_Segmentation/SoilSegmentationCUDA.exe)；[参数配置](Image_Segmentation/config_segmentation.txt)；[构建记录](https://github.com/Clifford-Wang/Soil_Pore_Structure_3D/actions/workflows/build-structure.yml)）提供监督式 Random Forest 体素分类。空气、水、矿物三相训练，以及以独立人工标注支持的有机质类别均可训练（含干土空气–矿物–有机质模式）；原生 CUDA 实现三维推断与可选的空气相邻域一致性处理。
+[Image_Segmentation 独立模块](Image_Segmentation/README.md)提供空气、水、固体三相监督分类。支持原生 CUDA 三维推断与可配置的空气相空间一致性处理，固相统一输出为类别 3，不进一步划分组成。
 
-TU Hamburg 公开配对 CT 的独立切片测试表明，使用数据集校准的邻域处理后，空气相 Dice 从 0.467 提高至约 **0.597**，水相从 0.967 提高至 0.970，矿物相保持约 0.987。该结果不保证不同土样的精度，空气相仍需进一步验证。详细实验设置及限制参见[模块说明](Image_Segmentation/README.md)。公开 USDA 风干团聚体 CT 上的有机质独立切片 Dice 仍低于可用于可靠定量分析的水平，因此此类别目前为**实验性功能，尚未通过真实 CT 精度验证**。
+- [下载原生 CUDA EXE](Image_Segmentation/SoilSegmentationCUDA.exe)
+- [参数配置文件](Image_Segmentation/config_segmentation.txt)
+- [Windows CUDA 构建记录](https://github.com/Clifford-Wang/Soil_Pore_Structure_3D/actions/workflows/build-structure.yml)
 
-Windows 原生 CUDA 分割程序与结构分析程序分别发布，均采用首次运行起连续 72 小时的试用校验。
+TU Hamburg 公开配对 CT 的空间分离测试表明，校准后的三维空气邻域处理使空气相 Dice 由 0.467 提高至 0.597，水相 Dice 约 0.970，固相 Dice 约 0.987。各项结果来自同一 CT 采集，不代表不同土样或扫描条件下的通用精度。
+
+Windows 原生 CUDA 分割与结构分析程序分别发布，保留首次使用起连续 72 小时的试用限制。仓库不发布明文 C++/CUDA 源码。

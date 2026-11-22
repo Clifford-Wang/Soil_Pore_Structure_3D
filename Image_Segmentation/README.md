@@ -1,57 +1,81 @@
-# 3D CT phase segmentation | Native CUDA
+# 3D CT air–water–solid segmentation | Native CUDA
 
-Windows x64 native CUDA executable for supervised **three-phase segmentation** (air, water, mineral) and optional four-phase segmentation (including organic matter). The full user configuration is editable; a 72-hour first-use trial applies. Source code is not distributed as plaintext.
+Windows x64 native CUDA program for supervised classification of **air (1), water (2), and solid (3)**. The solid phase is represented as a single class. The program uses an editable user configuration and a 72-hour first-use trial; C++/CUDA source is not released as plaintext.
 
-- [Download native CUDA EXE](SoilSegmentationCUDA.exe)
-- [Download configuration](config_segmentation.txt)
+- [Download SoilSegmentationCUDA.exe](SoilSegmentationCUDA.exe)
+- [Parameter configuration](config_segmentation.txt)
 - [Windows launcher](run_segmentation.bat)
-- [Windows CUDA build history](https://github.com/Clifford-Wang/Soil_Pore_Structure_3D/actions/workflows/build-structure.yml)
+- [CUDA build history](https://github.com/Clifford-Wang/Soil_Pore_Structure_3D/actions/workflows/build-structure.yml)
 
-## Classification method
+# 3D CT phase segmentation (native CUDA)
 
-Random Forest training uses manually annotated voxels and five local features: CT attenuation, 3×3×3 mean, standard deviation, gradient magnitude and discrete Laplacian magnitude. Forest training is performed on the CPU; native CUDA kernels perform whole-volume inference.
+## Scope and method
 
-The user may choose **air=1, water=2, mineral=3**, or include **organic=4** when separate organic reference annotations are available. The organic label is experimental: evaluation against independently held-out USDA forest-soil CT slices showed low organic Dice and does **not** establish reliable quantitative identification. Labels 0 (unlabeled) and 255 (ignored) are omitted from supervised fitting and reference scoring. Grayscale attenuation alone does not uniquely identify chemical composition.
+The executable implements supervised three-class Random Forest voxel classification.
+Five image features are grayscale intensity, 3x3x3 local mean, local standard
+deviation, centered gradient magnitude and local discrete Laplacian magnitude.
+The forest uses bagged CART trees, stratified sampling and Gini-impurity splits.
+CPU code fits the forest; CUDA kernels classify the 3D volume. This is a
+classical machine-learning baseline, **not** a trained 3D U-Net.
 
-Class-specific `phase_weight_*` parameters multiply Random Forest vote fractions before normalization. A second optional three-phase step, `air_spatial_filter`, checks whether a voxel classified as air has sufficient support among nearby provisional air voxels. This uses a separable three-dimensional box filter on CUDA; poorly supported air predictions are reassigned to their best non-air class. The radius, support fraction and initial seed-class weights are configurable. This second step is intentionally disabled by default until calibrated for a new sample.
+Classes: **1 air, 2 water, 3 solid**. All material classified as solid is
+represented by one label. Labels 0 and 255 are excluded from fitting and
+reference scoring.
 
-## Benchmark on published soil CT
+## Independent CT benchmark
 
-The preliminary three-phase evaluation used paired grayscale CT and published phase labels from the TU Hamburg transient-water-retention dataset (DOI [10.15480/336.4291](https://doi.org/10.15480/336.4291)). A spatially registered 64 × 192 × 192 region was separated into: training slices 0–19, parameter calibration slices 24–39, and untouched final test slices 44–63 (**737,280 voxels**). The same fitted forest is used in every comparison.
+Paired CT labels from the TU Hamburg transient-water-retention dataset
+(DOI: 10.15480/336.4291) were evaluated on 737,280 held-out voxels in
+spatially separated slices of one aligned acquisition. The user-calibrated
+3D neighborhood filter produced the following comparison:
 
-| Held-out test metric | Unweighted RF | Weighted RF | Weighted RF + 3D air-coherence filter |
-|:--|--:|--:|--:|
-| Air Dice | 0.1816 | 0.4666 | **0.5971** |
-| Water Dice | 0.9369 | 0.9670 | **0.9701** |
-| Mineral Dice | 0.9862 | 0.9867 | **0.9867** |
-| Overall voxel accuracy | 0.9566 | 0.9777 | **≈0.9798** |
+| Reference class | Weighted forest Dice | Weighted forest + 3D air filter Dice |
+|---|---:|---:|
+| Air | 0.4666 | 0.5971 |
+| Water | 0.9670 | 0.9701 |
+| Solid | 0.9867 | 0.9867 |
 
-The last method uses final class weights (air=0.125, water=0.700, mineral=1.000); a 5×5×5 support neighborhood, minimum air support of 0.40, and seed weights (air=0.075, water=0.850). An independent C++ implementation of the discrete filter produced air Dice=0.597127, water Dice=0.970070 and mineral Dice=0.986743; the small difference from the initial Python floating-point neighborhood calculation was limited to rounding at the support threshold. No testing labels were used in selecting these parameters.
+These results originate from one scan. They validate the reference CPU
+equivalent of the CUDA calculations, rather than direct GPU execution on
+an independent soil core. Different imaging and moisture conditions require
+their own calibration and held-out evaluation.
 
-Additional intervening held-out slices (20–23 and 40–43) also showed higher air, water and mineral Dice under this fixed profile. **All comparisons originate from the same CT acquisition.** The improved air Dice remains below 0.6 and performance on a different soil, scanner or moisture regime is not established. The benchmark evaluates CPU-equivalent model and refinement calculations; successful Windows native CUDA compilation is not a substitute for full GPU execution and validation.
+## Input
 
-## Organic-matter evaluation (experimental; NOT validated)
+Set nx, ny and nz in config_segmentation.txt. Supported formats:
 
-USDA publicly released 16 forest-soil aggregate grayscale CT sections with visually annotated air, mineral and organic-matter masks. These **dry-soil** labels contain no water ground truth and therefore cannot validate simultaneous water–organic identification. The original manual organic label is an image-based interpretation, not an independent chemical assay.
+- Raw grayscale: uint16 little-endian (default), optionally uint8; x varies
+  fastest, then y, then z. For 200³ uint16: exactly 16,000,000 bytes.
+- A single multi-frame TIFF, a PNG, or a directory containing PNG/TIFF slices. Image
+  decoding uses Windows Imaging Component; slices are sorted by filename.
+- Reference annotations: uint8 raw or grayscale PNG/TIFF labels, one byte
+  per voxel, with identical dimensions and ordering as the source grayscale.
 
-To minimize spatial leakage, the native five-feature Random Forest was fitted on separated sections (z=0–800), calibrated on sections z=968 and 1142, and tested on sections z=1472, 1601 and 1928. On these untouched test sections, pooled organic Dice was **0.009** for raw grayscale, **0.019** after grayscale median alignment, and **0.026** after additional validation-only class weighting. The organic class is sparse and the model generated many false positives. A separate exploratory 2D multiscale texture experiment improved organic Dice to about 0.041 and 0.078 on test sections containing organic pixels, but remained inadequate and is **not part of the released CUDA EXE**. The previously published wet-soil three-phase scores were not replaced or weakened by these experiments.
+First train with train_model=1, providing training_image and training_labels
+(all three phases should be manually represented in the reference), and set prediction_image to
+the CT volume to classify. A trained forest is saved in model_path and can be
+reused with train_model=0 on subsequent images. Reusing a model across
+different scanners or contrast settings requires validation.
 
-**Interpretation:** this release provides optional organic-label fitting and inference, but **organic segmentation has not passed independent accuracy validation**; do not treat its organic volume fraction as a verified material measurement. Reliable four-phase discrimination will require representative annotated wet soil, suitable acquisition contrast and independent validation at the sample level.
+## Output
 
-## Input and operation
+- phase_labels_u8.raw: 1–3 material labels, one byte per voxel.
+- phase_labels.vtk: 3D label volume, viewable in ParaView.
+- confidence_f32.raw: maximum forest vote score, **not** a calibrated posterior.
+- phase_summary.csv: phase volume fractions and low-confidence fraction.
+- probabilities_f32.raw: optional interleaved three-class scores.
+- pores_air_water_for_structure.txt: optional pore=0, solid=1 mask for the
+  separate 3D structure analysis EXE.
+- validation.csv: per-class precision, recall, Dice and IoU if independently
+  annotated reference labels are supplied through validation_labels.
 
-1. Specify `nx`, `ny`, `nz` and grayscale images in [config_segmentation.txt](config_segmentation.txt). Supported formats: little-endian uint16/uint8 raw stacks, multipage TIFF, or sequential PNG/TIFF slices.
-2. Provide matching uint8 annotation voxels for each target class. The minimum is two observed classes: wet air/water/mineral (1/2/3), dry air/mineral/organic (1/3/4), or fully annotated four-phase (1/2/3/4). For the USDA RGB mask palette, set `label_palette=usda_rgb`: black=unlabeled, white (250/255)=air, red (128,0,0)=mineral, green (0,128,0)=visually annotated organic. Raw/gray reference masks use `label_palette=gray`. Set `train_model=1` to fit and save a forest; use `train_model=0` with `model_path` to reuse it under matching acquisition conditions.
-3. Leave weights=1 and `air_spatial_filter=0` for an uncalibrated sample. For the specific TUHH validation crop, use the calibrated values above. **Recalibrate on spatially separate annotated data before applying the profile to a different CT volume.** The spatial filter only accepts three-phase forests; four-phase models remain supported with this filter disabled.
-4. Optionally provide `validation_labels` for independent reference scoring.
+The optional CUDA air-neighborhood filter requires sample-specific calibration;
+it is disabled by default. A previously saved model produced by the older
+four-label format is incompatible with this three-class release and must be
+retrained. Training and validation must use independent regions to avoid
+optimistic accuracy estimates. A single grayscale CT scan may be insufficient
+to distinguish liquid water from air without suitable acquisition conditions.
 
-## Output files
-
-- `phase_labels_u8.raw` and `phase_labels.vtk`: final material classes, including optional spatial refinement.
-- `confidence_f32.raw`: weighted vote score of the final emitted class. If spatial correction reassigns a voxel, the value is the fallback class score.
-- `phase_summary.csv`: class fractions and fraction below the confidence threshold.
-- `probabilities_f32.raw`: optional four-slot weighted vote fractions **before spatial label refinement**; the organic slot is zero for three-phase forests.
-- `pores_air_water_for_structure.txt`: optional binary pore/solid mask.
-- `validation.csv`: per-class precision, recall, Dice, and IoU if reference labels are provided.
-
-Weighted forest scores are **not calibrated posterior probabilities**. Organic-matter segmentation requires representative ground-truth data; the external USDA dry-soil test above did not meet a reliable accuracy threshold. Physical GPU execution and 72-hour expiry behavior remain to be tested on user hardware.
+The Windows executable includes a 72-hour first-use trial guard. Compilation
+and synthetic host-side tests do not substitute for validation on representative
+soil CT samples and an NVIDIA GPU.
