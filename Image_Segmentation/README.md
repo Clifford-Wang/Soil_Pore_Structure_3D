@@ -5,6 +5,7 @@ Windows x64 native CUDA program for supervised classification of **air (1), wate
 - [Download SoilSegmentationCUDA.exe](SoilSegmentationCUDA.exe)
 - [Parameter configuration](config_segmentation.txt)
 - [Windows launcher](run_segmentation.bat)
+- [Validation results](../Validation/README.md)
 - [CUDA build history](https://github.com/Clifford-Wang/Soil_Pore_Structure_3D/actions/workflows/build-structure.yml)
 
 # 3D CT phase segmentation (native CUDA)
@@ -22,23 +23,9 @@ Classes: **1 air, 2 water, 3 solid**. All material classified as solid is
 represented by one label. Labels 0 and 255 are excluded from fitting and
 reference scoring.
 
-## Independent CT benchmark
+## Validation
 
-Paired CT labels from the TU Hamburg transient-water-retention dataset
-(DOI: 10.15480/336.4291) were evaluated on 737,280 held-out voxels in
-spatially separated slices of one aligned acquisition. The user-calibrated
-3D neighborhood filter produced the following comparison:
-
-| Reference class | Weighted forest Dice | Weighted forest + 3D air filter Dice |
-|---|---:|---:|
-| Air | 0.4666 | 0.5971 |
-| Water | 0.9670 | 0.9701 |
-| Solid | 0.9867 | 0.9867 |
-
-These results originate from one scan. They validate the reference CPU
-equivalent of the CUDA calculations, rather than direct GPU execution on
-an independent soil core. Different imaging and moisture conditions require
-their own calibration and held-out evaluation.
+A spatially separated real-CT comparison on TU Hamburg sand images yielded held-out Dice scores of **0.5971 (air), 0.9701 (water) and 0.9867 (solid)** after calibration of the optional three-dimensional air filter. See [Validation](../Validation/README.md) for the test partition, complete numerical comparison and limitations.
 
 ## Input
 
