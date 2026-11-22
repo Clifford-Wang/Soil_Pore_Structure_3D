@@ -70,6 +70,13 @@ jobs:
           & .\build-structure\Release\segmentation_test.exe
           if ($LASTEXITCODE -ne 0) { throw 'Segmentation unit tests failed.' }
 
+      - name: Validate dry organic training and USDA RGB palette
+        shell: pwsh
+        run: |
+          cmake --build build-structure --config Release --target segmentation_dry_organic_test --parallel
+          & .\\build-structure\\Release\\segmentation_dry_organic_test.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Dry organic segmentation tests failed.' }
+
       - name: Compile Windows CUDA executable
         shell: pwsh
         run: |

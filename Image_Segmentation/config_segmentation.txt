@@ -1,6 +1,8 @@
 # Three-phase / four-phase supervised 3D CT segmentation: native Windows CUDA inference
 # Label encoding: 0=unlabeled, 1=air, 2=water, 3=mineral, 4=organic (optional), 255=ignore
-# Training annotations must contain air, water and mineral. Organic is optional.
+# Train on observed classes only: wet 1/2/3, dry organic 1/3/4, or full 1/2/3/4.
+# Each observed class needs at least two labeled voxels; 0/255 are ignored.
+# USDA dry-soil masks do not provide water labels.
 # All source and annotation stacks MUST have identical x/y/z dimensions.
 nx = 200
 ny = 200
@@ -17,8 +19,12 @@ validation_labels =
 output_folder = output_segmentation
 
 # 0 = little-endian uint16 raw; 1 = uint8 raw.
-# Alternatively set image path to a .tif file or directory of ordered TIFF slices.
-# TIFF slice filenames should be zero-padded (slice_0001.tif etc.).
+# Alternatively set image path to .png/.tif/.tiff or a directory of ordered PNG/TIFF slices.
+# Image and mask slice names should sort identically, preferably zero-padded.
+# Native USDA RGB palettes require PNG/TIFF labels on Windows.
+# gray=labels in uint8 raw/grayscale image; usda_rgb=original USDA colored masks.
+# USDA palette: black=ignore; white=air; red=minerals; green=visual organic.
+label_palette = gray
 raw_grayscale_u8 = 0
 gpu_id = 0
 trees = 32
@@ -38,7 +44,8 @@ phase_weight_mineral = 1.0
 phase_weight_organic = 1.0
 
 
-# Optional 3D local air-coherence refinement (three-phase models only).
+# Optional 3D local air-coherence refinement (wet three-phase models only).
+# MUST remain 0 when training a model that includes organic matter.
 # Disabled by default to avoid applying CT02-specific calibration to other scans.
 # TUHH CT02 calibrated profile: phase_weight_air=0.125, phase_weight_water=0.700,
 # phase_weight_mineral=1.0, air_spatial_filter=1, radius=2, min_fraction=0.4.
