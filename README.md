@@ -24,6 +24,18 @@ Windows 原生 CUDA 程序要求兼容的 NVIDIA 显卡及驱动。程序内置�
 
 数值核查包括形态学、连通域、孔–固界面和欧氏距离变换等标准合成样品。详细算例与三相分割结果见[数值验证页](Validation/README.md)。复杂自然土壤输入仍建议检查分割精度、体素分辨率及代表性体积。
 
+## Pore Network Model | 孔隙网络模型
+
+[独立模块：Pore_Network_Model](Pore_Network_Model/README.md)用于比较 PoreSpy SNOW2 和 Imperial College 最大球法（pnextract）获得的孔隙网络，在统一孔网求解框架下计算排水毛管压力–水饱和度曲线、空气/水相对渗透率及水相溶质突破曲线。
+
+- [模型说明与输入格式](Pore_Network_Model/README.md)
+- [参数配置](Pore_Network_Model/config_pnm.txt)
+- [Windows CUDA 编译记录](https://github.com/Clifford-Wang/Soil_Pore_Structure_3D/actions/workflows/build-pnm.yml)
+- [原生 CUDA EXE 预发布入口](https://github.com/Clifford-Wang/Soil_Pore_Structure_3D/releases/tag/pnm-native-preview)
+- [验证与适用范围](Validation/README.md)
+
+孔网提取仍由原始 PoreSpy 与 pnextract 工具分别执行；CUDA EXE 导入网络并进行物理计算，不将 SNOW2 与最大球法视为同一算法。首次运行起 72 小时试用，仓库仅保存加密构建输入，不公开明文 C++/CUDA 源码。合成网络测试已经通过，真实 CT 样品定量校验及实卡运行尚待完成。
+
 ## Image Segmentation | 三维 CT 空气–水–固体分割
 
 [Image_Segmentation 独立模块](Image_Segmentation/README.md)提供空气、水、固体三相监督分类。支持原生 CUDA 三维推断与可配置的空气相空间一致性处理，固相统一输出为类别 3，不进一步划分组成。
