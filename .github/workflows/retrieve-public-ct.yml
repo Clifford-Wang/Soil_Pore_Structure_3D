@@ -1,0 +1,88 @@
+name: Retrieve paired public soil CT validation crop
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/retrieve-public-ct.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Install scientific TIFF reader
+        run: python -m pip install --quiet numpy tifffile requests imagecodecs
+      - name: Resolve public TUHH data files, download, and crop
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, pathlib, requests, numpy as np, tifffile
+          from urllib.parse import urljoin
+          base = 'https://tore.tuhh.de/server/api'
+          item = '5fb78ae5-6b1e-4a28-92cd-0fb0b15c610b'
+          session = requests.Session()
+          session.headers.update({'User-Agent': 'Soil-CT-Research-Validation/1.0'})
+          def get_json(url):
+              r = session.get(url, timeout=(30, 120))
+              print('API status:', r.status_code, url.split('?')[0], flush=True)
+              r.raise_for_status()
+              return r.json()
+          page = get_json(f'{base}/core/items/{item}/bundles?size=100')
+          files = {}
+          for bundle in page.get('_embedded', {}).get('bundles', []):
+              bpage = get_json(f"{base}/core/bundles/{bundle['uuid']}/bitstreams?size=100")
+              for entry in bpage.get('_embedded', {}).get('bitstreams', []):
+                  files[entry['name']] = entry['uuid']
+          print('Available paired items:', [k for k in files if 'sand_02' in k or 'segmented_02' in k], flush=True)
+          output = pathlib.Path('real_ct_validation')
+          output.mkdir(exist_ok=True)
+          targets = ['CT_data_sand_02.tif', 'CT_data_sand_segmented_02.tif']
+          for name in targets:
+              if name not in files:
+                  raise RuntimeError(f'Not found in DSpace file list: {name}. Sample names: {list(files)[:20]}')
+              target = pathlib.Path('/tmp') / name
+              url = f"{base}/core/bitstreams/{files[name]}/content"
+              with session.get(url, stream=True, timeout=(30, 180), allow_redirects=True) as response:
+                  response.raise_for_status()
+                  print('Downloading:', name, 'size=', response.headers.get('content-length'), flush=True)
+                  with target.open('wb') as output_stream:
+                      for chunk in response.iter_content(4*1024*1024):
+                          if chunk:
+                              output_stream.write(chunk)
+              print('Downloaded', name, 'bytes=', target.stat().st_size, flush=True)
+          raw_path = pathlib.Path('/tmp') / targets[0]
+          seg_path = pathlib.Path('/tmp') / targets[1]
+          with tifffile.TiffFile(raw_path) as t_raw, tifffile.TiffFile(seg_path) as t_seg:
+              sr = t_raw.series[0].shape
+              ss = t_seg.series[0].shape
+              print('Raw shape', sr, 'segmented shape', ss, flush=True)
+              if len(sr)!=3 or len(ss)!=3 or sr!=ss:
+                  raise RuntimeError(f'Paired volumes are not matching 3D arrays: {sr} {ss}')
+              z,y,x = sr
+              dz,dy,dx = min(64,z),min(192,y),min(192,x)
+              z0,y0,x0 = (z-dz)//2,(y-dy)//2,(x-dx)//2
+              def subvolume(t):
+                  if len(t.pages)>=z0+dz:
+                      return np.stack([t.pages[k].asarray()[y0:y0+dy,x0:x0+dx] for k in range(z0,z0+dz)])
+                  vol = t.asarray()
+                  return np.asarray(vol[z0:z0+dz,y0:y0+dy,x0:x0+dx])
+              raw = subvolume(t_raw)
+              lab = subvolume(t_seg)
+          unique,counts = np.unique(lab,return_counts=True)
+          print('Labels/counts:',list(zip(unique.tolist(),counts.tolist()))[:30], flush=True)
+          np.savez_compressed(output/'tuhh_ct_02_paired_crop.npz', gray=raw, labels=lab)
+          metadata={'dataset':'DOI:10.15480/336.4291','files':targets,'original_shape':sr,'crop_offset_zyx':[z0,y0,x0],'shape':list(raw.shape),'raw_dtype':str(raw.dtype),'label_dtype':str(lab.dtype),'labels_and_counts':list(zip(unique.tolist(),counts.tolist()))[:30]}
+          (output/'metadata.json').write_text(json.dumps(metadata,indent=2),encoding='utf-8')
+          print('Created paired crop:',metadata,flush=True)
+          PY
+      - name: Upload matched experimental validation crop
+        uses: actions/upload-artifact@v4
+        with:
+          name: TUHH-CT02-Paired-Crop
+          path: real_ct_validation/*
+          if-no-files-found: error
