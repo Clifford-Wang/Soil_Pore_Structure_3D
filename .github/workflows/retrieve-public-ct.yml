@@ -23,7 +23,7 @@ jobs:
           python - <<'PY'
           import json, pathlib, requests, numpy as np, tifffile
           from urllib.parse import urljoin
-          base = 'https://tore.tuhh.de/server/api'
+          base = 'https://tore.tuhh.de/dspace-cris-server/api'
           item = '5fb78ae5-6b1e-4a28-92cd-0fb0b15c610b'
           session = requests.Session()
           session.headers.update({'User-Agent': 'Soil-CT-Research-Validation/1.0'})
