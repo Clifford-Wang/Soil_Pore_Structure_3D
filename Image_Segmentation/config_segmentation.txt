@@ -1,5 +1,6 @@
-# Four-phase supervised 3D CT segmentation: native Windows CUDA inference
-# Label encoding: 0=unlabeled, 1=air, 2=water, 3=mineral, 4=organic, 255=ignore
+# Three-phase / four-phase supervised 3D CT segmentation: native Windows CUDA inference
+# Label encoding: 0=unlabeled, 1=air, 2=water, 3=mineral, 4=organic (optional), 255=ignore
+# Training annotations must contain air, water and mineral. Organic is optional.
 # All source and annotation stacks MUST have identical x/y/z dimensions.
 nx = 200
 ny = 200
@@ -26,7 +27,17 @@ min_leaf = 12
 samples_per_class = 3000
 seed = 20261121
 
-# Export optional full four-class vote scores (four float32 values per voxel).
+# Multiplicative weights on forest vote fractions before renormalization.
+# Defaults preserve the unweighted four-class / three-class behavior.
+# Increase a weight to favor that class; reduce it to suppress false positives.
+# TUHH validation-specific example (NOT universal): air=0.075, water=0.850,
+# mineral=1.0, organic=1.0. Calibrate using separate labeled slices.
+phase_weight_air = 1.0
+phase_weight_water = 1.0
+phase_weight_mineral = 1.0
+phase_weight_organic = 1.0
+
+# Export optional weighted, renormalized four-class vote scores (four float32 values per voxel).
 export_probabilities = 0
 uncertainty_threshold = 0.60
 # 0=air/water (pore), 1=mineral/organic (solid), compatible with structure module.
